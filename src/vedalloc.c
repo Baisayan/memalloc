@@ -17,20 +17,12 @@ typedef struct block_header {
 
 typedef struct heap_header {
   uint8_t magic;
-  size_t total_blocks;
-  size_t total_pages;
 } heap_header;
 
 char *heap_start = NULL;
 
 void vedalloc_reset() {
   heap_start = NULL;
-}
-
-static heap_header *get_heap_header() {
-  heap_header *hdr = (heap_header *)heap_start;
-  assert(hdr->magic == HEAP_MAGIC);
-  return hdr;
 }
 
 static block_header *find_last_block() {
@@ -48,7 +40,6 @@ bool vedfree(void *ptr) {
   }
 
   block->in_use = false;  // mark block as free n free its mem
-  heap_header *hdr = get_heap_header();
 
   // forward coalesce
   if (block->next && !block->next->in_use) {
@@ -56,7 +47,6 @@ bool vedfree(void *ptr) {
     block->size += sizeof(block_header) + not_used_next->size;
     block->next = not_used_next->next;
     if (not_used_next->next) not_used_next->next->prev = block;
-    hdr->total_blocks--;
   }
 
   // backward coalesce
@@ -65,14 +55,12 @@ bool vedfree(void *ptr) {
     prev->size += sizeof(block_header) + block->size;
     prev->next = block->next;
     if (block->next) block->next->prev = prev;
-    hdr->total_blocks--;
   }
 
   return true;
 }
 
 static void *add_used_block(size_t size) {
-    heap_header *hdr = get_heap_header();
     block_header *block = (block_header *)(heap_start + sizeof(heap_header));
 
     block_header *fit = NULL;
@@ -93,7 +81,6 @@ static void *add_used_block(size_t size) {
       if (sbrk(grow) == (void *)-1) return NULL;
 
       last->size += grow;
-      hdr->total_pages += grow / PAGE_SIZE;
 
       fit = last;
     }
@@ -116,7 +103,6 @@ static void *add_used_block(size_t size) {
 
       fit->next = new_block;
       fit->size = size;
-      hdr->total_blocks++;
   }
 
   return (char *)fit + sizeof(block_header);
@@ -133,10 +119,7 @@ void *vedalloc(size_t size) {
 
   if (*heap_start != HEAP_MAGIC) {
     heap_header *hdr = (heap_header *)heap_start;
-
     hdr->magic = HEAP_MAGIC;
-    hdr->total_blocks = 1;
-    hdr->total_pages = 1;
 
     // create first free block
     block_header *first = (block_header *)(heap_start + sizeof(heap_header));
