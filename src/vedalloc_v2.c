@@ -5,7 +5,7 @@
 
 #define PAGE_SIZE 4096
 #define NUM_CLASSES 8
-#define LARGE_MAGIC 0xAADCF
+#define MAGIC 0xAADCF
 #define ALIGN8(x) (((x) + 7) & ~7)
 
 static size_t size_classes[NUM_CLASSES] = {
@@ -72,7 +72,7 @@ static void *alloc_large(size_t size) {
 
     if (mem == MAP_FAILED) return NULL;
     large_header *hdr = (large_header *)mem;
-    hdr->magic = LARGE_MAGIC;
+    hdr->magic = MAGIC;
     hdr->size = total;
 
     return (char *)mem + sizeof(large_header);
@@ -94,7 +94,7 @@ void *vedalloc_v2(size_t size) {
         page = page->next;
     }
 
-    // no page → allocate new
+    // if no page allocate new
     if (!page) {
         page = allocate_page(class_size);
         if (!page) return NULL;
@@ -111,10 +111,9 @@ void *vedalloc_v2(size_t size) {
 
 void vedfree_v2(void *ptr) {
     if (!ptr) return;
-
     large_header *lh = (large_header *)((char *)ptr - sizeof(large_header));
 
-    if (lh->magic == LARGE_MAGIC) {
+    if (lh->magic == MAGIC) {
         munmap((void *)lh, lh->size);
         return;
     }
@@ -122,7 +121,6 @@ void vedfree_v2(void *ptr) {
     // find page start
     uintptr_t addr = (uintptr_t)ptr;
     uintptr_t page_addr = addr & ~(PAGE_SIZE - 1);
-
     page_header *page = (page_header *)page_addr;
 
     block *b = (block *)ptr;

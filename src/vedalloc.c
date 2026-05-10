@@ -38,8 +38,7 @@ bool vedfree(void *ptr) {
   if (block->magic != BLOCK_MAGIC || !block->in_use) {
     return false;
   }
-
-  block->in_use = false;  // mark block as free n free its mem
+  block->in_use = false;
 
   // forward coalesce
   if (block->next && !block->next->in_use) {
@@ -62,7 +61,6 @@ bool vedfree(void *ptr) {
 
 static void *add_used_block(size_t size) {
     block_header *block = (block_header *)(heap_start + sizeof(heap_header));
-
     block_header *fit = NULL;
 
     while (block) {
@@ -81,7 +79,6 @@ static void *add_used_block(size_t size) {
       if (sbrk(grow) == (void *)-1) return NULL;
 
       last->size += grow;
-
       fit = last;
     }
 
